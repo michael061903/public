@@ -119,3 +119,51 @@ while IFS= read -r DEVICE || [[ -n "${DEVICE}" ]]; do
 done < "$DEVICES_FILE"
 
 echo "==== $(timestamp) Done. Files are on ${SERVER_HOST}:${DEST_DIR}/ ===="
+
+
+
+
+
+-----------------------------------------------------------------------------------------------------------------------------------------
+
+
+from flask import Flask, request, render_template_string
+import subprocess
+
+app = Flask(__name__)
+
+HTML = '''
+<h1>Load Balancer Command Builder</h1>
+<form method="post">
+    F5 Username: <input type="text" name="f5_user"><br>
+    F5 Password: <input type="password" name="f5_pass"><br>
+    F5 Device IP/Hostname: <input type="text" name="f5_host"><br>
+    TMOS Command: <input type="text" name="tmos_cmd"><br>
+    BASH Command: <input type="text" name="bash_cmd"><br>
+    <input type="submit" value="Run Script">
+</form>
+
+{% if output %}
+<br><br><br>
+<h2>Script Output:</h2>
+<pre>{{ output }}</pre>
+{% endif %}
+'''
+
+@app.route('/', methods=['GET', 'POST'])
+def index():
+    output = None
+    if request.method == 'POST':
+        f5_user = request.form['f5_user']
+        f5_pass = request.form['f5_pass']
+        f5_host = request.form['f5_host']
+        tmos_cmd = request.form['tmos_cmd']
+        bash_cmd = request.form['bash_cmd']
+
+        result = subprocess.run(
+            ["bash", "run_single_device.sh", f5_user, f5_pass, f5_host, tmos_cmd, bash_cmd],
+            capture_output=True,
+            text=True
+        )
+        output = result.stdout
+    return render_template_string(HTML, output=output)
